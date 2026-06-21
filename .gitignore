@@ -1,0 +1,17 @@
+# Binaries and coverage files
+
+bin/
+*.out
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# TLS certs and keys
+*.pem
+*.crt
+*.cer
+*.key
