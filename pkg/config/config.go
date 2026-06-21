@@ -13,6 +13,7 @@ import (
 
 type Flags struct {
 	ConfigPath string
+	VersionCmd bool
 }
 
 type Config struct {
@@ -45,6 +46,7 @@ func ParseFlags() *Flags {
 	var flags Flags
 
 	flag.StringVar(&flags.ConfigPath, "config", "", "Path to the config file")
+	flag.BoolVar(&flags.VersionCmd, "version", false, "Print the version and exit")
 	flag.Parse()
 
 	return &flags

@@ -1,15 +1,19 @@
 .PHONY: *
 
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+BUILD_TIME := $(shell date +"%Y-%m-%dT%H:%M:%S%z")
+
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
 
 all: fmt build run
 
 build:
-	go build -ldflags "-s -w" -trimpath -o bin/$(GOOS)-$(GOARCH)/dnf ./cmd
+	go build -ldflags "-s -w -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)" \
+		-trimpath -o bin/$(GOOS)-$(GOARCH)/dnf ./cmd
 
 run:
-	./bin/$(GOOS)-$(GOARCH)/dnf 
+	./bin/$(GOOS)-$(GOARCH)/dnf --version
 
 fmt:
 	go fmt ./...

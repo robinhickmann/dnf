@@ -12,16 +12,16 @@ import (
 	"github.com/robinhickmann/dnf/pkg/config"
 )
 
-var (
-	dnsPort  int
-	httpPort int
-)
-
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	flags := config.ParseFlags()
+
+	if flags.VersionCmd {
+		printVersion()
+		return
+	}
 
 	cfg, err := config.NewConfig(flags.ConfigPath, "config.yml", "config.yaml")
 	if err != nil {
