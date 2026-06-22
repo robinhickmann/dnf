@@ -22,14 +22,21 @@ type Config struct {
 }
 
 type DNS struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Port  int      `yaml:"port"`
+	Binds []string `yaml:"binds"`
+	Zone  Zone     `yaml:"zone"`
+}
+
+type Zone struct {
+	Name string `yaml:"name"`
+	IPv4 string `yaml:"ipv4"`
+	IPv6 string `yaml:"ipv6"`
 }
 
 type HTTP struct {
-	Host    string `yaml:"host"`
-	Port    int    `yaml:"port"`
-	TLS     TLS    `yaml:"tls"`
+	Port    int      `yaml:"port"`
+	Binds   []string `yaml:"binds"`
+	TLS     TLS      `yaml:"tls"`
 	Timeout struct {
 		Shutdown time.Duration `yaml:"shutdown"`
 	} `yaml:"timeout"`
@@ -109,11 +116,31 @@ func (c *Config) validate() error {
 }
 
 func (d *DNS) validate() error {
-	if err := host("dns.host", d.Host); err != nil {
+	if err := port("dns.port", d.Port); err != nil {
 		return err
 	}
 
-	if err := port("dns.port", d.Port); err != nil {
+	if err := binds("dns.binds", d.Binds); err != nil {
+		return err
+	}
+
+	if err := d.Zone.validate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (z *Zone) validate() error {
+	if err := require("dns.zone.name", z.Name); err != nil {
+		return err
+	}
+
+	if err := host("dns.zone.ipv4", z.IPv4); err != nil {
+		return err
+	}
+
+	if err := host("dns.zone.ipv6", z.IPv6); err != nil {
 		return err
 	}
 
@@ -121,11 +148,11 @@ func (d *DNS) validate() error {
 }
 
 func (h *HTTP) validate() error {
-	if err := host("http.host", h.Host); err != nil {
+	if err := port("http.port", h.Port); err != nil {
 		return err
 	}
 
-	if err := port("http.port", h.Port); err != nil {
+	if err := binds("http.binds", h.Binds); err != nil {
 		return err
 	}
 
@@ -156,10 +183,26 @@ func (t *TLS) validate() error {
 	return nil
 }
 
+// Validation Helpers
+
 func require(field, value string) error {
 	if value == "" {
 		return fmt.Errorf("%s field is required", field)
 	}
+	return nil
+}
+
+func binds(field string, values []string) error {
+	if len(values) == 0 {
+		return fmt.Errorf("%s field is required", field)
+	}
+
+	for _, value := range values {
+		if err := host(field, value); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

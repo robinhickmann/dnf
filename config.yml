@@ -1,13 +1,21 @@
 dns:
-  host: 0.0.0.0
-  port: 53
+  port: 5300
+  binds:
+    - 127.0.0.1
+    - ::1
+  zone: 
+    name: dns.example.com
+    ipv4: 127.0.0.1
+    ipv6: ::1
 
 http:
-  host: 0.0.0.0
   port: 8080
+  binds:
+    - 127.0.0.1
+    - ::1
   tls:
     enabled: true
     cert_file: cert.pem
     key_file: key.pem
   timeout:
-    shutdown: 10s
+    shutdown: 5s
