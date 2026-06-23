@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -10,11 +9,6 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
-
-type Flags struct {
-	ConfigPath string
-	VersionCmd bool
-}
 
 type Config struct {
 	DNS  DNS  `yaml:"dns"`
@@ -37,9 +31,7 @@ type HTTP struct {
 	Port    int      `yaml:"port"`
 	Binds   []string `yaml:"binds"`
 	TLS     TLS      `yaml:"tls"`
-	Timeout struct {
-		Shutdown time.Duration `yaml:"shutdown"`
-	} `yaml:"timeout"`
+	Timeout Timeout  `yaml:"timeout"`
 }
 
 type TLS struct {
@@ -48,57 +40,72 @@ type TLS struct {
 	KeyFile  string `yaml:"key_file"`
 }
 
-// ParseFlags returns a new Flags struct with all the parsed cli flags.
-func ParseFlags() *Flags {
-	var flags Flags
-
-	flag.StringVar(&flags.ConfigPath, "config", "", "Path to the config file")
-	flag.BoolVar(&flags.VersionCmd, "version", false, "Print the version and exit")
-	flag.Parse()
-
-	return &flags
+type Timeout struct {
+	Shutdown time.Duration `yaml:"shutdown"`
 }
 
 // NewConfig returns a new Config struct from the first available config file.
 // Returns an error if no valid config file is found.
-func NewConfig(configPath ...string) (*Config, error) {
-	var err error
+func NewConfig(configPath string) (*Config, error) {
+	if configPath != "" {
+		return loadConfig(configPath)
+	}
 
-	for _, path := range configPath {
-		if _, err = os.Stat(path); err == nil {
-			config, err := decodeConfig(path)
-			if err != nil {
-				return nil, err
-			}
-
-			err = config.validate()
-			if err != nil {
-				return nil, fmt.Errorf("failed to validate config file: %s: %w", path, err)
-			}
-
-			return config, nil
+	for _, path := range []string{"config.yaml", "config.yml"} {
+		if _, err := os.Stat(path); err == nil {
+			return loadConfig(path)
 		}
 	}
 
-	return nil, fmt.Errorf("no valid config file found")
+	return defaultConfig(), nil
 }
 
-func decodeConfig(configPath string) (*Config, error) {
-	var cfg Config
+func loadConfig(path string) (*Config, error) {
+	cfg := defaultConfig()
 
-	yamlFile, err := os.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config file: %s: %w", configPath, err)
+		return nil, fmt.Errorf("failed to load config file: %s: %w", path, err)
 	}
 
 	decoder := yaml.NewDecoder(bytes.NewReader(yamlFile))
 	decoder.KnownFields(true)
 
 	if err := decoder.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %s: %w", configPath, err)
+		return nil, fmt.Errorf("failed to parse config file: %s: %w", path, err)
 	}
 
-	return &cfg, nil
+	if err := cfg.validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate config file: %s: %w", path, err)
+	}
+
+	return cfg, nil
+}
+
+func defaultConfig() *Config {
+	return &Config{
+		DNS: DNS{
+			Port:  5300,
+			Binds: []string{"127.0.0.1", "::1"},
+			Zone: Zone{
+				Name: "dns.example.com",
+				IPv4: "127.0.0.1",
+				IPv6: "::1",
+			},
+		},
+		HTTP: HTTP{
+			Port:  8080,
+			Binds: []string{"127.0.0.1", "::1"},
+			TLS: TLS{
+				Enabled:  true,
+				CertFile: "cert.pem",
+				KeyFile:  "key.pem",
+			},
+			Timeout: Timeout{
+				Shutdown: 5 * time.Second,
+			},
+		},
+	}
 }
 
 // Config Validation
@@ -156,11 +163,11 @@ func (h *HTTP) validate() error {
 		return err
 	}
 
-	if err := timeout("http.timeout.shutdown", h.Timeout.Shutdown); err != nil {
+	if err := h.TLS.validate(); err != nil {
 		return err
 	}
 
-	if err := h.TLS.validate(); err != nil {
+	if err := h.Timeout.validate(); err != nil {
 		return err
 	}
 
@@ -180,6 +187,13 @@ func (t *TLS) validate() error {
 		return err
 	}
 
+	return nil
+}
+
+func (t *Timeout) validate() error {
+	if err := timeout("http.timeout.shutdown", t.Shutdown); err != nil {
+		return err
+	}
 	return nil
 }
 

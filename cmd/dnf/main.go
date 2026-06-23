@@ -7,25 +7,31 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/robinhickmann/dnf/pkg/cli"
 	"github.com/robinhickmann/dnf/pkg/config"
 	"github.com/robinhickmann/dnf/pkg/dns"
 	"github.com/robinhickmann/dnf/pkg/http"
+)
+
+var (
+	version   = "dev"
+	buildTime = "unknown"
 )
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	flags := config.ParseFlags()
+	flags := cli.ParseFlags()
+	flags.PrintVersion(version, buildTime)
 
-	if flags.VersionCmd {
-		printVersion()
-		return
-	}
-
-	cfg, err := config.NewConfig(flags.ConfigPath, "config.yml", "config.yaml")
+	cfg, err := config.NewConfig(flags.ConfigPath)
 	if err != nil {
 		panic(err)
+	}
+
+	if flags.DryRun {
+		return
 	}
 
 	dns := dns.NewServer(cfg)

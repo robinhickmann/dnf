@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -9,12 +9,7 @@ import (
 	"time"
 )
 
-var (
-	version   = "dev"
-	buildTime = "unknown"
-)
-
-func printVersion() {
+func printVersion(version, buildTime string) {
 	commit := "unknown"
 
 	if info, ok := debug.ReadBuildInfo(); ok {
