@@ -52,6 +52,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		case dns.TypeAAAA:
 			rr, err = dns.NewRR(fmt.Sprintf("%s 60 IN AAAA %s", question.Name, cfg.DNS.Zone.IPv6))
 		default:
+			fmt.Println(r.Id, dns.TypeToString[question.Qtype], question.Name)
 			continue
 		}
 
@@ -61,7 +62,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 
 		msg.Answer = append(msg.Answer, rr)
 
-		fmt.Println(w.RemoteAddr(), question.Qtype, question.Name, msg.Len())
+		fmt.Println(r.Id, dns.TypeToString[question.Qtype], question.Name)
 	}
 
 	if err := w.WriteMsg(msg); err != nil {
