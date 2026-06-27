@@ -1,0 +1,9 @@
+dns:
+  port: 53
+  binds:
+    - 0.0.0.0
+
+http:
+  port: 80
+  binds:
+    - 0.0.0.0

@@ -1,0 +1,41 @@
+services:
+  dnf:
+    build: .
+    ports:
+      - "8080:80/tcp"
+    volumes:
+      - ./docker-config.yml:/usr/src/app/config.yml
+    networks:
+      default:
+        ipv4_address: 172.20.0.10
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+
+  unbound:
+    image: alpinelinux/unbound:latest
+    ports:
+      - "5300:53/tcp"
+      - "5300:53/udp"
+    volumes:
+      - ./unbound.conf:/etc/unbound/unbound.conf
+    depends_on:
+      - dnf
+
+  demo:
+    build: ./demo
+    ports:
+      - "80:80/tcp"
+    depends_on:
+      - dnf
+    develop:
+      watch:
+        - action: rebuild
+          path: ./demo
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
