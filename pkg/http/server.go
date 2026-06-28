@@ -15,7 +15,10 @@ func NewServer(cfg *config.Config) []*http.Server {
 
 	for _, bind := range cfg.HTTP.Binds {
 		s := &http.Server{
-			Addr: formatAddr(bind, cfg.HTTP.Port),
+			Addr:         formatAddr(bind, cfg.HTTP.Port),
+			IdleTimeout:  cfg.HTTP.Timeout.Idle,
+			ReadTimeout:  cfg.HTTP.Timeout.Read,
+			WriteTimeout: cfg.HTTP.Timeout.Write,
 		}
 
 		go func() {
@@ -45,7 +48,9 @@ func NewServer(cfg *config.Config) []*http.Server {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World! "))
+	if _, err := w.Write([]byte("Hello World! ")); err != nil {
+		fmt.Println(err)
+	}
 	fmt.Println(r.RemoteAddr, r.UserAgent(), r.Host)
 }
 

@@ -16,9 +16,10 @@ type Config struct {
 }
 
 type DNS struct {
-	Port  int      `yaml:"port"`
-	Binds []string `yaml:"binds"`
-	Zone  Zone     `yaml:"zone"`
+	Port    int      `yaml:"port"`
+	Binds   []string `yaml:"binds"`
+	Zone    Zone     `yaml:"zone"`
+	Timeout Timeout  `yaml:"timeout"`
 }
 
 type Zone struct {
@@ -42,6 +43,9 @@ type TLS struct {
 
 type Timeout struct {
 	Shutdown time.Duration `yaml:"shutdown"`
+	Idle     time.Duration `yaml:"idle"`
+	Read     time.Duration `yaml:"read"`
+	Write    time.Duration `yaml:"write"`
 }
 
 // NewConfig returns a new Config struct from the first available config file.
@@ -92,6 +96,11 @@ func defaultConfig() *Config {
 				IPv4: "127.0.0.1",
 				IPv6: "::1",
 			},
+			Timeout: Timeout{
+				Shutdown: 5 * time.Second,
+				Read:     10 * time.Second,
+				Write:    10 * time.Second,
+			},
 		},
 		HTTP: HTTP{
 			Port:  8080,
@@ -103,6 +112,9 @@ func defaultConfig() *Config {
 			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,
+				Idle:     5 * time.Second,
+				Read:     10 * time.Second,
+				Write:    10 * time.Second,
 			},
 		},
 	}
@@ -132,6 +144,10 @@ func (d *DNS) validate() error {
 	}
 
 	if err := d.Zone.validate(); err != nil {
+		return err
+	}
+
+	if err := d.Timeout.validate("dns"); err != nil {
 		return err
 	}
 
@@ -167,7 +183,7 @@ func (h *HTTP) validate() error {
 		return err
 	}
 
-	if err := h.Timeout.validate(); err != nil {
+	if err := h.Timeout.validate("http"); err != nil {
 		return err
 	}
 
@@ -190,10 +206,25 @@ func (t *TLS) validate() error {
 	return nil
 }
 
-func (t *Timeout) validate() error {
-	if err := timeout("http.timeout.shutdown", t.Shutdown); err != nil {
+func (t *Timeout) validate(srv string) error {
+	if err := timeout(srv, "timeout.shutdown", t.Shutdown); err != nil {
 		return err
 	}
+
+	if err := timeout(srv, "timeout.read", t.Read); err != nil {
+		return err
+	}
+
+	if err := timeout(srv, "timeout.write", t.Write); err != nil {
+		return err
+	}
+
+	if srv == "http" {
+		if err := timeout(srv, "timeout.idle", t.Idle); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -237,9 +268,9 @@ func port(field string, value int) error {
 	return nil
 }
 
-func timeout(field string, value time.Duration) error {
+func timeout(srv, field string, value time.Duration) error {
 	if value < time.Second || value > time.Minute {
-		return fmt.Errorf("%s field must be at least 1 second and at most 1 minute", field)
+		return fmt.Errorf("%s.%s field must be at least 1 second and at most 1 minute", srv, field)
 	}
 	return nil
 }

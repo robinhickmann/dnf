@@ -9,6 +9,10 @@ dns:
     name: dns.example.com
     ipv4: 127.0.0.1
     ipv6: ::1
+  timeout:
+    shutdown: 5s
+    read: 10s
+    write: 10s
 
 http:
   port: 8080
@@ -21,3 +25,6 @@ http:
     key_file: key.pem
   timeout:
     shutdown: 5s
+    idle: 5s
+    read: 10s
+    write: 10s

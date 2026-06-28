@@ -42,17 +42,20 @@ func main() {
 
 	fmt.Printf("\nexiting")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.Timeout.Shutdown)
+	httpCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.Timeout.Shutdown)
+	defer cancel()
+
+	dnsCtx, cancel := context.WithTimeout(context.Background(), cfg.DNS.Timeout.Shutdown)
 	defer cancel()
 
 	for _, s := range http {
-		if err := s.Shutdown(shutdownCtx); err != nil {
+		if err := s.Shutdown(httpCtx); err != nil {
 			panic(err)
 		}
 	}
 
 	for _, s := range dns {
-		if err := s.Shutdown(); err != nil {
+		if err := s.ShutdownContext(dnsCtx); err != nil {
 			panic(err)
 		}
 	}

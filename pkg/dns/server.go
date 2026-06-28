@@ -18,8 +18,10 @@ func NewServer(cfg *config.Config) []*dns.Server {
 
 	for _, bind := range cfg.DNS.Binds {
 		s := &dns.Server{
-			Addr: formatAddr(bind, cfg.DNS.Port),
-			Net:  "udp",
+			Addr:         formatAddr(bind, cfg.DNS.Port),
+			Net:          "udp",
+			ReadTimeout:  cfg.DNS.Timeout.Read,
+			WriteTimeout: cfg.DNS.Timeout.Write,
 		}
 
 		go func(s *dns.Server) {

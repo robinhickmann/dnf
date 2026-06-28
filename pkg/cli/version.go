@@ -27,13 +27,15 @@ func printVersion(version, buildTime string) {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 8, ' ', 0)
 
-	fmt.Fprintf(w, " Version:\t%s\n", version)
-	fmt.Fprintf(w, " Go version:\t%s\n", runtime.Version())
-	fmt.Fprintf(w, " Git commit:\t%s\n", commit)
-	fmt.Fprintf(w, " Built:\t%s\n", formatTime(buildTime))
-	fmt.Fprintf(w, " OS/Arch:\t%s/%s\n", runtime.GOOS, runtime.GOARCH)
+	_, _ = fmt.Fprintf(w, " Version:\t%s\n", version)
+	_, _ = fmt.Fprintf(w, " Go version:\t%s\n", runtime.Version())
+	_, _ = fmt.Fprintf(w, " Git commit:\t%s\n", commit)
+	_, _ = fmt.Fprintf(w, " Built:\t%s\n", formatTime(buildTime))
+	_, _ = fmt.Fprintf(w, " OS/Arch:\t%s/%s\n", runtime.GOOS, runtime.GOARCH)
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		panic(err)
+	}
 }
 
 func formatTime(t string) string {
