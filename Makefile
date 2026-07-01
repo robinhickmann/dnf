@@ -1,7 +1,8 @@
-.PHONY: all build run fmt clean lint tls
+.PHONY: all build run fmt clean lint release $(PLATFORMS) tls
 
 VERSION := $(shell git describe --tags --always 2>/dev/null || echo dev)
 BUILD_TIME := $(shell date +"%Y-%m-%dT%H:%M:%S%z")
+PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
@@ -27,6 +28,13 @@ lint: ./bin/golangci-lint
 
 ./bin/golangci-lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.12.2
+
+release: $(PLATFORMS)
+
+$(PLATFORMS):
+	$(MAKE) build \
+		GOOS=$(word 1,$(subst -, ,$@)) \
+		GOARCH=$(word 2,$(subst -, ,$@)) \
 
 tls: key.pem cert.pem
 

@@ -96,10 +96,10 @@ func defaultConfig() *Config {
 			Port:  5300,
 			Binds: []string{"127.0.0.1", "::1"},
 			Zone: Zone{
-				Name: "dns.example.com",
+				Name:  "dns.example.com",
 				Email: "admin.example.com",
-				IPv4: "127.0.0.1",
-				IPv6: "::1",
+				IPv4:  "127.0.0.1",
+				IPv6:  "::1",
 				Nameservers: []string{
 					"ns1.example.com",
 					"ns2.example.com",
