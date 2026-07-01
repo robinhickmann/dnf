@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/miekg/dns"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,9 +25,11 @@ type DNS struct {
 }
 
 type Zone struct {
-	Name string `yaml:"name"`
-	IPv4 string `yaml:"ipv4"`
-	IPv6 string `yaml:"ipv6"`
+	Name        string   `yaml:"name"`
+	Email       string   `yaml:"email"`
+	IPv4        string   `yaml:"ipv4"`
+	IPv6        string   `yaml:"ipv6"`
+	Nameservers []string `yaml:"nameservers"`
 }
 
 type HTTP struct {
@@ -93,8 +97,13 @@ func defaultConfig() *Config {
 			Binds: []string{"127.0.0.1", "::1"},
 			Zone: Zone{
 				Name: "dns.example.com",
+				Email: "admin.example.com",
 				IPv4: "127.0.0.1",
 				IPv6: "::1",
+				Nameservers: []string{
+					"ns1.example.com",
+					"ns2.example.com",
+				},
 			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,
@@ -155,7 +164,19 @@ func (d *DNS) validate() error {
 }
 
 func (z *Zone) validate() error {
-	if err := require("dns.zone.name", z.Name); err != nil {
+	// Convert to FQDN
+	z.Name = dns.Fqdn(z.Name)
+	z.Email = dns.Fqdn(z.Email)
+
+	for i, ns := range z.Nameservers {
+		z.Nameservers[i] = dns.Fqdn(ns)
+	}
+
+	if err := domain("dns.zone.name", z.Name); err != nil {
+		return err
+	}
+
+	if err := email("dns.zone.email", z.Email); err != nil {
 		return err
 	}
 
@@ -164,6 +185,10 @@ func (z *Zone) validate() error {
 	}
 
 	if err := host("dns.zone.ipv6", z.IPv6); err != nil {
+		return err
+	}
+
+	if err := nameservers("dns.zone.nameservers", z.Nameservers); err != nil {
 		return err
 	}
 
@@ -255,9 +280,11 @@ func host(field, value string) error {
 	if err := require(field, value); err != nil {
 		return err
 	}
+
 	if net.ParseIP(value) == nil {
 		return fmt.Errorf("%s: %q is not a valid IPv4 or IPv6 address", field, value)
 	}
+
 	return nil
 }
 
@@ -287,6 +314,62 @@ func file(field, value string) error {
 
 	if stat.IsDir() {
 		return fmt.Errorf("%s: %q is a directory", field, value)
+	}
+
+	return nil
+}
+
+func nameservers(field string, values []string) error {
+	if len(values) == 0 {
+		return fmt.Errorf("%s field is required", field)
+	}
+
+	for _, value := range values {
+		if err := domain(field, value); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func domain(field, value string) error {
+	if err := require(field, value); err != nil {
+		return err
+	}
+
+	if len(value) > 255 { // account for trailing dot
+		return fmt.Errorf("%s field must be less than 256 characters", field)
+	}
+
+	labels := strings.Split(strings.TrimSuffix(value, "."), ".")
+	for _, label := range labels {
+		if len(label) == 0 {
+			return fmt.Errorf("%s field must not contain empty labels", field)
+		}
+		if len(label) > 63 {
+			return fmt.Errorf("%s: %q label must be less than 64 characters", field, label)
+		}
+	}
+
+	if len(labels) < 2 {
+		return fmt.Errorf("%s field must contain at least 2 labels", field)
+	}
+
+	return nil
+}
+
+func email(field, value string) error {
+	if err := domain(field, value); err != nil {
+		return err
+	}
+
+	if strings.Contains(value, "@") {
+		return fmt.Errorf("%s field must use RNAME format and cant contain @", field)
+	}
+
+	if labels := strings.Split(value, "."); len(labels) < 3 {
+		return fmt.Errorf("%s field must contain at least 3 labels", field)
 	}
 
 	return nil

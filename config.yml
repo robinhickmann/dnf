@@ -5,10 +5,14 @@ dns:
   binds:
     - 127.0.0.1
     - ::1
-  zone: 
+  zone:
     name: dns.example.com
+    email: admin.example.com
     ipv4: 127.0.0.1
     ipv6: ::1
+    nameservers:
+      - ns1.example.com
+      - ns2.example.com
   timeout:
     shutdown: 5s
     read: 10s
