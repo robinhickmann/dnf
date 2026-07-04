@@ -1,0 +1,23 @@
+[Unit]
+Description=DNF Authoritative DNS Server
+Documentation=https://github.com/robinhickmann/dnf
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/dnf --config /etc/dnf/config.yml
+Restart=on-failure
+RestartSec=5s
+
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

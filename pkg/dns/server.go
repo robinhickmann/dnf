@@ -45,7 +45,6 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 	msg := new(dns.Msg)
 	msg.SetReply(r)
 	msg.Authoritative = true
-	msg.Compress = true
 
 	for _, question := range r.Question {
 		var rr []dns.RR

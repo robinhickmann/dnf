@@ -1,10 +1,9 @@
 # Default configuration
 
 dns:
-  port: 5300
+  port: 53
   binds:
-    - 127.0.0.1
-    - ::1
+    - 0.0.0.0
   zone:
     name: dns.example.com
     email: admin.example.com
@@ -21,8 +20,7 @@ dns:
 http:
   port: 8080
   binds:
-    - 127.0.0.1
-    - ::1
+    - 0.0.0.0
   tls:
     enabled: true
     cert_file: cert.pem

@@ -49,6 +49,8 @@ jobs:
             platform=$(basename "$dir")
             mv "$dir/dnf" "bin/dnf-$platform"
           done
+          cp dnf.service bin/dnf.service
+          cp config.yml bin/config.yml
 
       - name: Generate Checksums
         run: |
@@ -62,3 +64,5 @@ jobs:
           files: |
             bin/dnf-*
             bin/checksums.txt
+            bin/dnf.service
+            bin/config.yml

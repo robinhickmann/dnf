@@ -93,8 +93,8 @@ func loadConfig(path string) (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		DNS: DNS{
-			Port:  5300,
-			Binds: []string{"127.0.0.1", "::1"},
+			Port:  53,
+			Binds: []string{"0.0.0.0"},
 			Zone: Zone{
 				Name:  "dns.example.com",
 				Email: "admin.example.com",
@@ -113,7 +113,7 @@ func defaultConfig() *Config {
 		},
 		HTTP: HTTP{
 			Port:  8080,
-			Binds: []string{"127.0.0.1", "::1"},
+			Binds: []string{"0.0.0.0"},
 			TLS: TLS{
 				Enabled:  true,
 				CertFile: "cert.pem",

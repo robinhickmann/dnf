@@ -27,7 +27,8 @@ func main() {
 
 	cfg, err := config.NewConfig(flags.ConfigPath)
 	if err != nil {
-		panic(err)
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(2)
 	}
 
 	if flags.DryRun {
