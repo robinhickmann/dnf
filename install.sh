@@ -42,6 +42,8 @@ echo "Installing dnf $VERSION ($OS/$ARCH)"
 if [ ! -f "$INSTALL_BIN" ]; then
     curl -fsSL "$RELEASE_URL/dnf-$OS-$ARCH" \
         -o "$INSTALL_BIN"
+
+    chmod 755 "$INSTALL_BIN"
 fi
 
 # Download and install systemd service
