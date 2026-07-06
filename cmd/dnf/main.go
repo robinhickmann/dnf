@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"os/user"
+	"strconv"
 	"syscall"
 
 	"github.com/robinhickmann/dnf/pkg/cli"
@@ -35,8 +37,16 @@ func main() {
 		return
 	}
 
+	tlsConfig := http.NewTLSConfig(cfg.HTTP.TLS.CertFile, cfg.HTTP.TLS.KeyFile)
+
+	if err := dropPrivileges(); err != nil {
+		fmt.Fprint(os.Stderr, "failed to drop privileges: %w", err)
+		os.Exit(1)
+	}
+	fmt.Println(os.Getuid())
+
 	dns := dns.NewServer(cfg)
-	http := http.NewServer(cfg)
+	http := http.NewServer(cfg, tlsConfig)
 
 	<-ctx.Done()
 	stop()
@@ -60,4 +70,28 @@ func main() {
 			panic(err)
 		}
 	}
+}
+
+func dropPrivileges() error {
+	if os.Getuid() != 0 {
+		return nil
+	}
+
+	u, err := user.Lookup("nobody")
+	if err != nil {
+		return fmt.Errorf("cant find user nobody: %w", err)
+	}
+
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(u.Gid)
+
+	if err = syscall.Setgid(gid); err != nil {
+		return fmt.Errorf("setgid failed: %w", err)
+	}
+
+	if err = syscall.Setuid(uid); err != nil {
+		return fmt.Errorf("setuid failed: %w", err)
+	}
+
+	return nil
 }

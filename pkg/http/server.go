@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,7 +10,7 @@ import (
 )
 
 // NewServer returns and starts a new http.Server with the provided config options.
-func NewServer(cfg *config.Config) []*http.Server {
+func NewServer(cfg *config.Config, tlsConfig *tls.Config) []*http.Server {
 	http.HandleFunc("/", indexHandler)
 	srv := []*http.Server{}
 
@@ -19,13 +20,14 @@ func NewServer(cfg *config.Config) []*http.Server {
 			IdleTimeout:  cfg.HTTP.Timeout.Idle,
 			ReadTimeout:  cfg.HTTP.Timeout.Read,
 			WriteTimeout: cfg.HTTP.Timeout.Write,
+			TLSConfig:    tlsConfig,
 		}
 
 		go func() {
 			var err error
 
 			if cfg.HTTP.TLS.Enabled {
-				err = s.ListenAndServeTLS(cfg.HTTP.TLS.CertFile, cfg.HTTP.TLS.KeyFile)
+				err = s.ListenAndServeTLS("", "")
 			} else {
 				err = s.ListenAndServe()
 			}
@@ -45,6 +47,17 @@ func NewServer(cfg *config.Config) []*http.Server {
 	}
 
 	return srv
+}
+
+func NewTLSConfig(certFile, keyFile string) *tls.Config {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		panic(err)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
