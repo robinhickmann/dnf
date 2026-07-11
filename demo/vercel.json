@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/install.sh",
+      "destination": "https://raw.githubusercontent.com/robinhickmann/dnf/main/install.sh"
+    },
+    {
+      "source": "/uninstall.sh",
+      "destination": "https://raw.githubusercontent.com/robinhickmann/dnf/main/uninstall.sh"
+    }
+  ]
+}

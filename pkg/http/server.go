@@ -3,20 +3,35 @@ package http
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
-	"strings"
 
 	"github.com/robinhickmann/dnf/pkg/config"
 )
 
+// NewBind returns and binds all the net.Listener's for the dns binds.
+func NewBinds(cfg *config.Config) []net.Listener {
+	listeners := []net.Listener{}
+
+	for _, bind := range cfg.HTTP.Binds {
+		ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", bind, cfg.HTTP.Port))
+		if err != nil {
+			panic(err)
+		}
+		listeners = append(listeners, ln)
+	}
+
+	return listeners
+}
+
 // NewServer returns and starts a new http.Server with the provided config options.
-func NewServer(cfg *config.Config, tlsConfig *tls.Config) []*http.Server {
+func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Config) []*http.Server {
 	http.HandleFunc("/", indexHandler)
 	srv := []*http.Server{}
 
-	for _, bind := range cfg.HTTP.Binds {
+	for _, ln := range listeners {
 		s := &http.Server{
-			Addr:         formatAddr(bind, cfg.HTTP.Port),
+			Addr:         ln.Addr().String(),
 			IdleTimeout:  cfg.HTTP.Timeout.Idle,
 			ReadTimeout:  cfg.HTTP.Timeout.Read,
 			WriteTimeout: cfg.HTTP.Timeout.Write,
@@ -27,9 +42,9 @@ func NewServer(cfg *config.Config, tlsConfig *tls.Config) []*http.Server {
 			var err error
 
 			if cfg.HTTP.TLS.Enabled {
-				err = s.ListenAndServeTLS("", "")
+				err = s.ServeTLS(ln, "", "")
 			} else {
-				err = s.ListenAndServe()
+				err = s.Serve(ln)
 			}
 
 			if err != nil && err != http.ErrServerClosed {
@@ -49,6 +64,7 @@ func NewServer(cfg *config.Config, tlsConfig *tls.Config) []*http.Server {
 	return srv
 }
 
+// NewTLSConfig tries to load the key pair and returns a new tls.Config if successful.
 func NewTLSConfig(certFile, keyFile string) *tls.Config {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -65,11 +81,4 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Println(r.RemoteAddr, r.UserAgent(), r.Host)
-}
-
-func formatAddr(host string, port int) string {
-	if strings.Contains(host, ":") {
-		return fmt.Sprintf("[%s]:%d", host, port)
-	}
-	return fmt.Sprintf("%s:%d", host, port)
 }

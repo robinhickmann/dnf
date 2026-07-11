@@ -4,6 +4,14 @@
 
 Well, that's the idea!
 
+### Install
+
 ```
-curl -fsSL https://raw.githubusercontent.com/robinhickmann/dnf/main/install.sh | sudo sh
+curl -sSfL https://dnf.hickmann.dev/install.sh | sudo sh
+```
+
+### Uninstall
+
+```
+curl -sSfL https://dnf.hickmann.dev/uninstall.sh | sudo sh
 ```

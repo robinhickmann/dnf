@@ -152,6 +152,10 @@ func (d *DNS) validate() error {
 		return err
 	}
 
+	for i, bind := range d.Binds {
+		d.Binds[i] = formatAddr(bind)
+	}
+
 	if err := d.Zone.validate(); err != nil {
 		return err
 	}
@@ -202,6 +206,10 @@ func (h *HTTP) validate() error {
 
 	if err := binds("http.binds", h.Binds); err != nil {
 		return err
+	}
+
+	for i, bind := range h.Binds {
+		h.Binds[i] = formatAddr(bind)
 	}
 
 	if err := h.TLS.validate(); err != nil {
@@ -274,6 +282,13 @@ func binds(field string, values []string) error {
 	}
 
 	return nil
+}
+
+func formatAddr(host string) string {
+	if strings.Contains(host, ":") {
+		return fmt.Sprintf("[%s]", host)
+	}
+	return host
 }
 
 func host(field, value string) error {

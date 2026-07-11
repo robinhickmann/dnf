@@ -2,7 +2,7 @@ package dns
 
 import (
 	"fmt"
-	"strings"
+	"net"
 	"time"
 
 	"github.com/miekg/dns"
@@ -11,24 +11,40 @@ import (
 
 var serial = uint32(time.Now().Unix())
 
+// NewBind returns and binds all the net.PacketConn's for the dns binds.
+func NewBinds(cfg *config.Config) []net.PacketConn {
+	pktConns := []net.PacketConn{}
+
+	for _, bind := range cfg.DNS.Binds {
+		pktConn, err := net.ListenPacket("udp", fmt.Sprintf("%s:%d", bind, cfg.DNS.Port))
+		if err != nil {
+			panic(err)
+		}
+		pktConns = append(pktConns, pktConn)
+	}
+
+	return pktConns
+}
+
 // NewServer returns and starts a new dns.Server with the provided config options.
-func NewServer(cfg *config.Config) []*dns.Server {
+func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
 	srv := []*dns.Server{}
 
 	dns.HandleFunc(cfg.DNS.Zone.Name, func(w dns.ResponseWriter, r *dns.Msg) {
 		dnsHandler(w, r, cfg)
 	})
 
-	for _, bind := range cfg.DNS.Binds {
+	for _, pktConn := range pktConns {
 		s := &dns.Server{
-			Addr:         formatAddr(bind, cfg.DNS.Port),
+			PacketConn:   pktConn,
+			Addr:         pktConn.LocalAddr().String(),
 			Net:          "udp",
 			ReadTimeout:  cfg.DNS.Timeout.Read,
 			WriteTimeout: cfg.DNS.Timeout.Write,
 		}
 
 		go func(s *dns.Server) {
-			err := s.ListenAndServe()
+			err := s.ActivateAndServe()
 			if err != nil {
 				panic(err)
 			}
@@ -123,11 +139,4 @@ func newRR(s string) ([]dns.RR, error) {
 		return nil, err
 	}
 	return []dns.RR{rr}, nil
-}
-
-func formatAddr(host string, port int) string {
-	if strings.Contains(host, ":") {
-		return fmt.Sprintf("[%s]:%d", host, port)
-	}
-	return fmt.Sprintf("%s:%d", host, port)
 }

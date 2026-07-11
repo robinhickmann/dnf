@@ -37,16 +37,17 @@ func main() {
 		return
 	}
 
+	pktConns := dns.NewBinds(cfg)
+	listeners := http.NewBinds(cfg)
 	tlsConfig := http.NewTLSConfig(cfg.HTTP.TLS.CertFile, cfg.HTTP.TLS.KeyFile)
 
 	if err := dropPrivileges(); err != nil {
 		fmt.Fprint(os.Stderr, "failed to drop privileges: %w", err)
 		os.Exit(1)
 	}
-	fmt.Println(os.Getuid())
 
-	dns := dns.NewServer(cfg)
-	http := http.NewServer(cfg, tlsConfig)
+	dns := dns.NewServer(cfg, pktConns)
+	http := http.NewServer(cfg, listeners, tlsConfig)
 
 	<-ctx.Done()
 	stop()
