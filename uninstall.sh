@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-INSTALL_BIN="/usr/local/bin/dnf"
-INSTALL_SERVICE="/etc/systemd/system/dnf.service"
-INSTALL_DIR="/etc/dnf"
+INSTALL_BIN="/usr/local/bin/dnfd"
+INSTALL_SERVICE="/etc/systemd/system/dnfd.service"
+INSTALL_DIR="/etc/dnfd"
 
 # Check for root and systemd
 if [ "$(id -u)" -ne 0 ]; then
@@ -17,7 +17,7 @@ if ! command -v systemctl >/dev/null 2>&1; then
 fi
 
 # Disable and stop service
-systemctl disable --now dnf
+systemctl disable --now dnfd
 
 # Remove files
 rm -rf $INSTALL_BIN $INSTALL_SERVICE $INSTALL_DIR

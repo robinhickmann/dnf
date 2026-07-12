@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-INSTALL_BIN="/usr/local/bin/dnf"
-INSTALL_SERVICE="/etc/systemd/system/dnf.service"
-INSTALL_CONFIG="/etc/dnf/config.yml"
+INSTALL_BIN="/usr/local/bin/dnfd"
+INSTALL_SERVICE="/etc/systemd/system/dnfd.service"
+INSTALL_CONFIG="/etc/dnfd/config.yml"
 
 REPO="robinhickmann/dnf"
 VERSION=${1:-latest}
@@ -48,13 +48,13 @@ fi
 
 # Download and install systemd service
 if [ ! -f "$INSTALL_SERVICE" ]; then
-    curl -fsSL "$RELEASE_URL/dnf.service" \
+    curl -fsSL "$RELEASE_URL/dnfd.service" \
         -o "$INSTALL_SERVICE"
 fi
 
 # install config only if it doesn't exist
 if [ ! -f "$INSTALL_CONFIG" ]; then
-    mkdir -p /etc/dnf
+    mkdir -p /etc/dnfd
 
     curl -fsSL "$RELEASE_URL/config.yml" \
         -o "$INSTALL_CONFIG"
@@ -62,6 +62,6 @@ fi
 
 # Enable and start service
 systemctl daemon-reload
-systemctl enable --now dnf
+systemctl enable --now dnfd
 
 echo "Successfully installed dnf $VERSION ($OS/$ARCH)"

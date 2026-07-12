@@ -10,9 +10,9 @@ GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
 BIN := bin/$(GOOS)-$(GOARCH)/dnf
 
-INSTALL_BIN := /usr/local/bin/dnf
-INSTALL_SERVICE := /etc/systemd/system/dnf.service
-INSTALL_DIR := /etc/dnf
+INSTALL_BIN := /usr/local/bin/dnfd
+INSTALL_SERVICE := /etc/systemd/system/dnfd.service
+INSTALL_DIR := /etc/dnfd
 
 all: tls fmt lint build run
 
@@ -37,16 +37,16 @@ install: build
 	@[ "$(shell id -u)" -eq 0 ] || (echo "error: run with sudo"; exit 1)
 
 	install -Dm755 $(BIN) $(INSTALL_BIN)
-	install -Dm644 dnf.service $(INSTALL_SERVICE)
+	install -Dm644 dnfd.service $(INSTALL_SERVICE)
 	install -Dm644 config.yml $(INSTALL_DIR)/config.yml
 
 	systemctl daemon-reload
-	systemctl enable --now dnf
+	systemctl enable --now dnfd
 
 uninstall:
 	@[ "$(shell id -u)" -eq 0 ] || (echo "error: run with sudo"; exit 1)
 	
-	systemctl disable --now dnf
+	systemctl disable --now dnfd
 	rm -rf $(INSTALL_BIN) $(INSTALL_SERVICE) $(INSTALL_DIR)
 	systemctl daemon-reload
 
