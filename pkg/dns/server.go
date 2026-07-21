@@ -7,9 +7,14 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/robinhickmann/dnf/pkg/config"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-var serial = uint32(time.Now().Unix())
+var (
+	serial = uint32(time.Now().Unix())
+	logger zerolog.Logger
+)
 
 // NewBind returns and binds all the net.PacketConn's for the dns binds.
 func NewBinds(cfg *config.Config) []net.PacketConn {
@@ -28,6 +33,7 @@ func NewBinds(cfg *config.Config) []net.PacketConn {
 
 // NewServer returns and starts a new dns.Server with the provided config options.
 func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
+	logger = log.With().Str("server", "dns").Logger()
 	srv := []*dns.Server{}
 
 	dns.HandleFunc(cfg.DNS.Zone.Name, func(w dns.ResponseWriter, r *dns.Msg) {
@@ -50,8 +56,8 @@ func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
 			}
 		}(s)
 
-		fmt.Printf("DNS Server listening on udp://%s\n", s.Addr)
 		srv = append(srv, s)
+		logger.Info().Msgf("listening on udp://%s", s.Addr)
 	}
 
 	return srv
@@ -79,11 +85,16 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		case dns.TypeNS:
 			rr, err = getNS(question, cfg)
 		default:
-			fmt.Println(r.Id, dns.TypeToString[question.Qtype], question.Name, w.RemoteAddr())
-
 			if soa, err := getSOA(question, cfg); err == nil {
 				msg.Ns = append(msg.Ns, soa...)
 			}
+
+			logger.Debug().
+				Int("id", int(r.Id)).
+				Str("type", dns.TypeToString[question.Qtype]).
+				Str("name", question.Name).
+				Str("addr", w.RemoteAddr().String()).
+				Msg("unknown record")
 
 			continue
 		}
@@ -92,8 +103,14 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 			continue
 		}
 
-		fmt.Println(r.Id, dns.TypeToString[question.Qtype], question.Name, w.RemoteAddr())
 		msg.Answer = append(msg.Answer, rr...)
+
+		logger.Debug().
+			Int("id", int(r.Id)).
+			Str("type", dns.TypeToString[question.Qtype]).
+			Str("name", question.Name).
+			Str("addr", w.RemoteAddr().String()).
+			Msg("query")
 	}
 
 	if err := w.WriteMsg(msg); err != nil {

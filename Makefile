@@ -2,6 +2,7 @@
 
 VERSION := $(shell git describe --tags --always 2>/dev/null || echo dev)
 BUILD_TIME := $(shell date +"%Y-%m-%dT%H:%M:%S%z")
+DEBUG := true
 
 # List of supported platforms built for release
 PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
@@ -21,7 +22,7 @@ build:
 		-X main.buildTime=$(BUILD_TIME)" -trimpath -o $(BIN) ./cmd/dnf
 
 run:
-	@./$(BIN) --config config.dev.yml
+	@./$(BIN) --config config.dev.yml --debug=$(DEBUG)
 
 dev:
 	@docker compose up --build --quiet-build

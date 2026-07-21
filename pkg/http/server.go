@@ -3,11 +3,16 @@ package http
 import (
 	"crypto/tls"
 	"fmt"
+	stdlog "log"
 	"net"
 	"net/http"
 
 	"github.com/robinhickmann/dnf/pkg/config"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
+
+var logger zerolog.Logger
 
 // NewBind returns and binds all the net.Listener's for the dns binds.
 func NewBinds(cfg *config.Config) []net.Listener {
@@ -26,7 +31,9 @@ func NewBinds(cfg *config.Config) []net.Listener {
 
 // NewServer returns and starts a new http.Server with the provided config options.
 func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Config) []*http.Server {
-	http.HandleFunc("/", indexHandler)
+	logger = log.With().Str("server", "http").Logger()
+	http.HandleFunc("/", httpHandler)
+
 	srv := []*http.Server{}
 
 	for _, ln := range listeners {
@@ -36,6 +43,7 @@ func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Conf
 			ReadTimeout:  cfg.HTTP.Timeout.Read,
 			WriteTimeout: cfg.HTTP.Timeout.Write,
 			TLSConfig:    tlsConfig,
+			ErrorLog:     stdlog.New(logger, "", 0),
 		}
 
 		go func() {
@@ -53,9 +61,9 @@ func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Conf
 		}()
 
 		if cfg.HTTP.TLS.Enabled {
-			fmt.Printf("HTTP Server listening on https://%s\n", s.Addr)
+			logger.Info().Msgf("listening on https://%s", s.Addr)
 		} else {
-			fmt.Printf("HTTP Server listening on http://%s\n", s.Addr)
+			logger.Info().Msgf("listening on http://%s", s.Addr)
 		}
 
 		srv = append(srv, s)
@@ -68,7 +76,7 @@ func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Conf
 func NewTLSConfig(certFile, keyFile string) *tls.Config {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		panic(err)
+		logger.Fatal().Err(err).Msg("failed to load key pair")
 	}
 
 	return &tls.Config{
@@ -76,9 +84,14 @@ func NewTLSConfig(certFile, keyFile string) *tls.Config {
 	}
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte("Hello World! ")); err != nil {
-		fmt.Println(err)
+		logger.Err(err).Msg("failed to write response")
 	}
-	fmt.Println(r.RemoteAddr, r.UserAgent(), r.Host)
+
+	logger.Debug().
+		Str("host", r.Host).
+		Str("user_agent", r.UserAgent()).
+		Str("addr", r.RemoteAddr).
+		Msg("request")
 }

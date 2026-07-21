@@ -30,3 +30,8 @@ http:
     idle: 5s
     read: 10s
     write: 10s
+
+log:
+  level: info
+  output: stderr
+  time: unix

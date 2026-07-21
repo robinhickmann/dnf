@@ -9,12 +9,28 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v3"
 )
+
+var timeFormats = map[string]string{
+	"unix":      zerolog.TimeFormatUnix,
+	"unixms":    zerolog.TimeFormatUnixMs,
+	"unixmicro": zerolog.TimeFormatUnixMicro,
+	"unixnano":  zerolog.TimeFormatUnixNano,
+
+	"rfc3339":     time.RFC3339,
+	"rfc3339nano": time.RFC3339Nano,
+	"rfc1123":     time.RFC1123,
+	"rfc1123z":    time.RFC1123Z,
+	"rfc822":      time.RFC822,
+	"rfc822z":     time.RFC822Z,
+}
 
 type Config struct {
 	DNS  DNS  `yaml:"dns"`
 	HTTP HTTP `yaml:"http"`
+	Log  Log  `yaml:"log"`
 }
 
 type DNS struct {
@@ -50,6 +66,12 @@ type Timeout struct {
 	Idle     time.Duration `yaml:"idle"`
 	Read     time.Duration `yaml:"read"`
 	Write    time.Duration `yaml:"write"`
+}
+
+type Log struct {
+	Level      string `yaml:"level"`
+	Output     string `yaml:"output"`
+	TimeFormat string `yaml:"time"`
 }
 
 // NewConfig returns a new Config struct from the first available config file.
@@ -126,6 +148,11 @@ func defaultConfig() *Config {
 				Write:    10 * time.Second,
 			},
 		},
+		Log: Log{
+			Level:      "info",
+			Output:     "stderr",
+			TimeFormat: "unix",
+		},
 	}
 }
 
@@ -137,6 +164,10 @@ func (c *Config) validate() error {
 	}
 
 	if err := c.HTTP.validate(); err != nil {
+		return err
+	}
+
+	if err := c.Log.validate(); err != nil {
 		return err
 	}
 
@@ -257,6 +288,40 @@ func (t *Timeout) validate(srv string) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (l *Log) validate() error {
+	// Log level
+	if err := require("log.level", l.Level); err != nil {
+		return err
+	}
+
+	if _, err := zerolog.ParseLevel(l.Level); err != nil {
+		return fmt.Errorf("log.level: %q is not a valid level", l.Level)
+	}
+
+	// Log output
+	if err := require("log.output", l.Output); err != nil {
+		return err
+	}
+
+	output := strings.ToLower(l.Output)
+	if output != "stdout" && output != "stderr" {
+		return fmt.Errorf("log.output: %q is not a valid output", l.Output)
+	}
+
+	// Log time format
+	if err := require("log.time", l.TimeFormat); err != nil {
+		return err
+	}
+
+	s, ok := timeFormats[l.TimeFormat]
+	if !ok {
+		return fmt.Errorf("log.time: %q is an unrecognized time format", l.TimeFormat)
+	}
+	l.TimeFormat = s
 
 	return nil
 }
