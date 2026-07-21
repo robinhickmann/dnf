@@ -29,6 +29,11 @@ case $ARCH in
     *) echo "error: unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
+if [ -f "$INSTALL_BIN" ] || [ -f "$INSTALL_SERVICE" ] || [ -d "$INSTALL_CONFIG" ]; then
+    echo "dnf $VERSION ($OS/$ARCH) is already installed"
+    exit 0
+fi
+
 if [ "$VERSION" = "latest" ]; then
     VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
         | grep '"tag_name"' \
@@ -62,6 +67,8 @@ fi
 
 # Enable and start service
 systemctl daemon-reload
-systemctl enable --now dnfd
+systemctl enable dnfd
 
 echo "Successfully installed dnf $VERSION ($OS/$ARCH)"
+echo "The config is located at $INSTALL_CONFIG"
+echo "After you have configured it, run 'systemctl start dnfd'"

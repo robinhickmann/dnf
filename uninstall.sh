@@ -16,12 +16,18 @@ if ! command -v systemctl >/dev/null 2>&1; then
     exit 1
 fi
 
-# Disable and stop service
-systemctl disable --now dnfd
+if ! { [ -f "$INSTALL_BIN" ] || [ -f "$INSTALL_SERVICE" ] || [ -d "$INSTALL_DIR" ]; }; then
+    echo "dnf is not installed"
+    exit 0
+fi
+
+if [ -f "$INSTALL_SERVICE" ]; then
+    systemctl disable --now dnfd
+    rm -f "$INSTALL_SERVICE"
+    systemctl daemon-reload
+fi
 
 # Remove files
-rm -rf $INSTALL_BIN $INSTALL_SERVICE $INSTALL_DIR
-
-systemctl daemon-reload
+rm -rf $INSTALL_BIN $INSTALL_DIR
 
 echo "Successfully uninstalled dnf"
