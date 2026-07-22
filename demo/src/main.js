@@ -1,3 +1,5 @@
+import 'flag-icons/css/flag-icons.min.css';
+
 const zone = "dns.example.com";
 
 document.getElementById("token").textContent = generateToken().concat(".").concat(zone);
