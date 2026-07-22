@@ -42,8 +42,8 @@ func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Conf
 			IdleTimeout:  cfg.HTTP.Timeout.Idle,
 			ReadTimeout:  cfg.HTTP.Timeout.Read,
 			WriteTimeout: cfg.HTTP.Timeout.Write,
-			TLSConfig:    tlsConfig,
 			ErrorLog:     stdlog.New(logger, "", 0),
+			TLSConfig:    tlsConfig,
 		}
 
 		go func() {

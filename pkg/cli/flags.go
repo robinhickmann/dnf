@@ -2,7 +2,6 @@ package cli
 
 import (
 	"flag"
-	"os"
 )
 
 type Flags struct {
@@ -23,13 +22,4 @@ func ParseFlags() *Flags {
 	flag.Parse()
 
 	return &flags
-}
-
-// PrintVersion prints the version and build information if the version flag is set.
-// If the version is printed it exists the program.
-func (f *Flags) PrintVersion(version, buildTime string) {
-	if f.VersionCmd {
-		printVersion(version, buildTime)
-		os.Exit(0)
-	}
 }

@@ -30,7 +30,7 @@ case $ARCH in
 esac
 
 if [ -f "$INSTALL_BIN" ] || [ -f "$INSTALL_SERVICE" ] || [ -d "$INSTALL_CONFIG" ]; then
-    echo "dnf $VERSION ($OS/$ARCH) is already installed"
+    echo "dnf ($OS/$ARCH) is already installed"
     exit 0
 fi
 

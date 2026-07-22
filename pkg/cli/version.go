@@ -9,7 +9,13 @@ import (
 	"time"
 )
 
-func printVersion(version, buildTime string) {
+// PrintVersion prints the version and build information if the version flag is set.
+// If the version is printed it exists the program.
+func (f *Flags) PrintVersion(version, buildTime string) {
+	if !f.VersionCmd {
+		return
+	}
+
 	commit := "unknown"
 
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -36,6 +42,8 @@ func printVersion(version, buildTime string) {
 	if err := w.Flush(); err != nil {
 		panic(err)
 	}
+
+	os.Exit(0)
 }
 
 func formatTime(t string) string {

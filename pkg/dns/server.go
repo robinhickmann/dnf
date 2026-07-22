@@ -3,6 +3,7 @@ package dns
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -80,26 +81,30 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		case dns.TypeHTTPS:
 			rr, err = newRR(fmt.Sprintf("%s 60 IN HTTPS 1 . alpn=h2 ipv4hint=%s ipv6hint=%s",
 				question.Name, cfg.DNS.Zone.IPv4, cfg.DNS.Zone.IPv6))
-		case dns.TypeSOA:
-			rr, err = getSOA(question, cfg)
 		case dns.TypeNS:
 			rr, err = getNS(question, cfg)
-		default:
-			if soa, err := getSOA(question, cfg); err == nil {
-				msg.Ns = append(msg.Ns, soa...)
+		case dns.TypeSOA:
+			if isApex(question.Name, cfg.DNS.Zone.Name) {
+				rr, err = getSOA(question, cfg)
 			}
-
+		default:
 			logger.Debug().
 				Int("id", int(r.Id)).
 				Str("type", dns.TypeToString[question.Qtype]).
-				Str("name", question.Name).
+				Str("name", strings.ToLower(question.Name)).
 				Str("addr", w.RemoteAddr().String()).
 				Msg("unknown record")
+		}
 
+		if len(rr) == 0 { // add SOA to the authority section
+			if soa, err := getSOA(question, cfg); err == nil {
+				msg.Ns = append(msg.Ns, soa...)
+			}
 			continue
 		}
 
 		if err != nil {
+			logger.Err(err).Msg("unable to get record")
 			continue
 		}
 
@@ -108,7 +113,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		logger.Debug().
 			Int("id", int(r.Id)).
 			Str("type", dns.TypeToString[question.Qtype]).
-			Str("name", question.Name).
+			Str("name", strings.ToLower(question.Name)).
 			Str("addr", w.RemoteAddr().String()).
 			Msg("query")
 	}
@@ -119,7 +124,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 }
 
 func getNS(question dns.Question, cfg *config.Config) ([]dns.RR, error) {
-	if question.Name != cfg.DNS.Zone.Name { // zone apex
+	if !isApex(question.Name, cfg.DNS.Zone.Name) {
 		return nil, nil
 	}
 
@@ -156,4 +161,8 @@ func newRR(s string) ([]dns.RR, error) {
 		return nil, err
 	}
 	return []dns.RR{rr}, nil
+}
+
+func isApex(name, zone string) bool {
+	return strings.EqualFold(name, zone)
 }
