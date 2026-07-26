@@ -12,6 +12,17 @@ dns:
     nameservers:
       - ns1.example.com
       - ns2.example.com
+  rate_limit:
+    enabled: true
+    rate: 25
+    burst: 50
+    ecs:
+      enabled: true
+      rate: 10
+      burst: 20
+    block:
+      enabled: true
+      duration: 5m
   timeout:
     shutdown: 5s
     read: 10s
@@ -25,6 +36,14 @@ http:
     enabled: true
     cert_file: cert.pem
     key_file: key.pem
+  rate_limit:
+    enabled: true
+    rate: 25
+    burst: 50
+    block:
+      enabled: true
+      duration: 5m
+      max_connections: 10
   timeout:
     shutdown: 5s
     idle: 5s

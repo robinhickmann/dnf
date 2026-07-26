@@ -16,10 +16,11 @@ type Config struct {
 }
 
 type DNS struct {
-	Port    int      `yaml:"port"`
-	Binds   []string `yaml:"binds"`
-	Zone    Zone     `yaml:"zone"`
-	Timeout Timeout  `yaml:"timeout"`
+	Port      int       `yaml:"port"`
+	Binds     []string  `yaml:"binds"`
+	Zone      Zone      `yaml:"zone"`
+	RateLimit RateLimit `yaml:"rate_limit"`
+	Timeout   Timeout   `yaml:"timeout"`
 }
 
 type Zone struct {
@@ -31,16 +32,37 @@ type Zone struct {
 }
 
 type HTTP struct {
-	Port    int      `yaml:"port"`
-	Binds   []string `yaml:"binds"`
-	TLS     TLS      `yaml:"tls"`
-	Timeout Timeout  `yaml:"timeout"`
+	Port      int       `yaml:"port"`
+	Binds     []string  `yaml:"binds"`
+	TLS       TLS       `yaml:"tls"`
+	RateLimit RateLimit `yaml:"rate_limit"`
+	Timeout   Timeout   `yaml:"timeout"`
 }
 
 type TLS struct {
 	Enabled  bool   `yaml:"enabled"`
 	CertFile string `yaml:"cert_file"`
 	KeyFile  string `yaml:"key_file"`
+}
+
+type RateLimit struct {
+	Enabled bool  `yaml:"enabled"`
+	Rate    int   `yaml:"rate"`
+	Burst   int   `yaml:"burst"`
+	ECS     ECS   `yaml:"ecs"`
+	Block   Block `yaml:"block"`
+}
+
+type ECS struct {
+	Enabled bool `yaml:"enabled"`
+	Rate    int  `yaml:"rate"`
+	Burst   int  `yaml:"burst"`
+}
+
+type Block struct {
+	Enabled        bool          `yaml:"enabled"`
+	Duration       time.Duration `yaml:"duration"`
+	MaxConnections int           `yaml:"max_connections"`
 }
 
 type Timeout struct {
@@ -109,6 +131,20 @@ func defaultConfig() *Config {
 					"ns2.example.com",
 				},
 			},
+			RateLimit: RateLimit{
+				Enabled: true,
+				Rate:    25,
+				Burst:   50,
+				ECS: ECS{
+					Enabled: true,
+					Rate:    10,
+					Burst:   20,
+				},
+				Block: Block{
+					Enabled:  true,
+					Duration: 5 * time.Minute,
+				},
+			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,
 				Read:     10 * time.Second,
@@ -122,6 +158,16 @@ func defaultConfig() *Config {
 				Enabled:  true,
 				CertFile: "cert.pem",
 				KeyFile:  "key.pem",
+			},
+			RateLimit: RateLimit{
+				Enabled: true,
+				Rate:    25,
+				Burst:   50,
+				Block: Block{
+					Enabled:        true,
+					Duration:       5 * time.Minute,
+					MaxConnections: 10,
+				},
 			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,

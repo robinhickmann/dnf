@@ -12,18 +12,50 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var timeFormats = map[string]string{
-	"unix":      zerolog.TimeFormatUnix,
-	"unixms":    zerolog.TimeFormatUnixMs,
-	"unixmicro": zerolog.TimeFormatUnixMicro,
-	"unixnano":  zerolog.TimeFormatUnixNano,
+type TimeRange struct {
+	Min time.Duration
+	Max time.Duration
+}
 
-	"rfc3339":     time.RFC3339,
-	"rfc3339nano": time.RFC3339Nano,
-	"rfc1123":     time.RFC1123,
-	"rfc1123z":    time.RFC1123Z,
-	"rfc822":      time.RFC822,
-	"rfc822z":     time.RFC822Z,
+var (
+	timeFormats = map[string]string{
+		"unix":      zerolog.TimeFormatUnix,
+		"unixms":    zerolog.TimeFormatUnixMs,
+		"unixmicro": zerolog.TimeFormatUnixMicro,
+		"unixnano":  zerolog.TimeFormatUnixNano,
+
+		"rfc3339":     time.RFC3339,
+		"rfc3339nano": time.RFC3339Nano,
+		"rfc1123":     time.RFC1123,
+		"rfc1123z":    time.RFC1123Z,
+		"rfc822":      time.RFC822,
+		"rfc822z":     time.RFC822Z,
+	}
+
+	timeRanges = map[string]TimeRange{
+		"timeout": {time.Second, time.Minute},
+		"block":   {time.Minute, 24 * time.Hour},
+	}
+)
+
+func parseDuration(d time.Duration) string {
+	plural := func(n int, unit string) string {
+		if n == 1 {
+			return fmt.Sprintf("%d %s", n, unit)
+		}
+		return fmt.Sprintf("%d %ss", n, unit)
+	}
+
+	switch {
+	case d >= time.Hour && d%time.Hour == 0:
+		return plural(int(d.Hours()), "hour")
+	case d >= time.Minute && d%time.Minute == 0:
+		return plural(int(d.Minutes()), "minute")
+	case d >= time.Second && d%time.Second == 0:
+		return plural(int(d.Seconds()), "second")
+	default:
+		return d.String()
+	}
 }
 
 func (c *Config) validate() error {
@@ -52,6 +84,10 @@ func (d *DNS) validate() error {
 	}
 
 	if err := d.Zone.validate(); err != nil {
+		return err
+	}
+
+	if err := d.RateLimit.validate("dns"); err != nil {
 		return err
 	}
 
@@ -99,6 +135,10 @@ func (h *HTTP) validate() error {
 		return err
 	}
 
+	if err := h.RateLimit.validate("http"); err != nil {
+		return err
+	}
+
 	if err := h.Timeout.validate("http"); err != nil {
 		return err
 	}
@@ -122,22 +162,70 @@ func (t *TLS) validate() error {
 	return nil
 }
 
-func (t *Timeout) validate(srv string) error {
-	if err := timeout(srv, "timeout.shutdown", t.Shutdown); err != nil {
+func (r *RateLimit) validate(srv string) error {
+	if err := require("rate_limit.rate", r.Rate); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
+	if err := require("rate_limit.burst", r.Burst); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
+	if srv == "dns" {
+		if err := r.ECS.validate(); err != nil {
+			return fmt.Errorf("%s.rate_limit.%s", srv, err)
+		}
+	}
+
+	if err := r.Block.validate(srv); err != nil {
+		return fmt.Errorf("%s.rate_limit.%s", srv, err)
+	}
+
+	return nil
+}
+
+func (e *ECS) validate() error {
+	if err := require("ecs.rate", e.Rate); err != nil {
 		return err
 	}
 
-	if err := timeout(srv, "timeout.read", t.Read); err != nil {
+	if err := require("ecs.burst", e.Burst); err != nil {
 		return err
 	}
 
-	if err := timeout(srv, "timeout.write", t.Write); err != nil {
+	return nil
+}
+
+func (b *Block) validate(srv string) error {
+	if err := duration("block.duration", b.Duration); err != nil {
 		return err
 	}
 
 	if srv == "http" {
-		if err := timeout(srv, "timeout.idle", t.Idle); err != nil {
+		if err := require("block.max_connections", b.MaxConnections); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (t *Timeout) validate(srv string) error {
+	if err := duration("timeout.shutdown", t.Shutdown); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
+	if err := duration("timeout.read", t.Read); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
+	if err := duration("timeout.write", t.Write); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
+	if srv == "http" {
+		if err := duration("timeout.idle", t.Idle); err != nil {
+			return fmt.Errorf("%s.%s", srv, err)
 		}
 	}
 
@@ -187,9 +275,13 @@ func require(field string, value any) error {
 	return nil
 }
 
-func timeout(srv, field string, value time.Duration) error {
-	if value < time.Second || value > time.Minute {
-		return fmt.Errorf("%s.%s field must be at least 1 second and at most 1 minute", srv, field)
+func duration(field string, value time.Duration) error {
+	tr := strings.Split(field, ".")[0]
+	min, max := timeRanges[tr].Min, timeRanges[tr].Max
+
+	if value < min || value > max {
+		return fmt.Errorf("%s field must be at least %s and at most %s",
+			field, parseDuration(min), parseDuration(max))
 	}
 	return nil
 }

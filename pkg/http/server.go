@@ -86,7 +86,7 @@ func NewTLSConfig(certFile, keyFile string) *tls.Config {
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte("Hello World! ")); err != nil {
-		logger.Err(err).Msg("failed to write response")
+		logger.Error().Err(err).Msg("failed to write response")
 	}
 
 	logger.Debug().

@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	serial = uint32(time.Now().Unix())
-	logger zerolog.Logger
+	serial   = uint32(time.Now().Unix())
+	ednsSize = uint16(1232)
+	logger   zerolog.Logger
 )
 
 // NewBind returns and binds all the net.PacketConn's for the dns binds.
@@ -57,8 +58,8 @@ func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
 			}
 		}(s)
 
-		srv = append(srv, s)
 		logger.Info().Msgf("listening on udp://%s", s.Addr)
+		srv = append(srv, s)
 	}
 
 	return srv
@@ -68,10 +69,19 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 	msg := new(dns.Msg)
 	msg.SetReply(r)
 	msg.Authoritative = true
+	msg.Compress = true
+
+	msgSize, _ := handleEDNS(r, msg)
 
 	for _, question := range r.Question {
 		var rr []dns.RR
 		var err error
+
+		if question.Qclass != dns.ClassINET {
+			m := new(dns.Msg).SetRcode(r, dns.RcodeRefused)
+			writeMsg(w, m)
+			return
+		}
 
 		switch question.Qtype {
 		case dns.TypeA:
@@ -104,11 +114,9 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		}
 
 		if err != nil {
-			logger.Err(err).Msg("unable to get record")
+			logger.Error().Err(err).Msg("unable to get record")
 			continue
 		}
-
-		msg.Answer = append(msg.Answer, rr...)
 
 		logger.Debug().
 			Int("id", int(r.Id)).
@@ -116,11 +124,29 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 			Str("name", strings.ToLower(question.Name)).
 			Str("addr", w.RemoteAddr().String()).
 			Msg("query")
+
+		msg.Answer = append(msg.Answer, rr...)
 	}
 
-	if err := w.WriteMsg(msg); err != nil {
-		fmt.Println(err)
+	if msg.Len() > msgSize {
+		logger.Warn().
+			Int("id", int(r.Id)).Str("addr", w.RemoteAddr().String()).
+			Msg("refused oversized response")
+
+		msg.SetRcode(r, dns.RcodeRefused)
 	}
+
+	writeMsg(w, msg)
+}
+
+func handleEDNS(r, msg *dns.Msg) (int, *dns.OPT) {
+	opt := r.IsEdns0()
+	if opt == nil {
+		return dns.MinMsgSize, nil
+	}
+
+	msg.SetEdns0(ednsSize, false)
+	return int(min(opt.UDPSize(), ednsSize)), opt
 }
 
 func getNS(question dns.Question, cfg *config.Config) ([]dns.RR, error) {
@@ -161,6 +187,12 @@ func newRR(s string) ([]dns.RR, error) {
 		return nil, err
 	}
 	return []dns.RR{rr}, nil
+}
+
+func writeMsg(w dns.ResponseWriter, msg *dns.Msg) {
+	if err := w.WriteMsg(msg); err != nil {
+		logger.Error().Err(err).Msg("failed to write response")
+	}
 }
 
 func isApex(name, zone string) bool {
