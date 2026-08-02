@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	serial   = uint32(time.Now().Unix())
-	ednsSize = uint16(1232)
-	logger   zerolog.Logger
+	serial = uint32(time.Now().Unix())
+	logger zerolog.Logger
 )
 
 // NewBind returns and binds all the net.PacketConn's for the dns binds.
@@ -71,15 +70,19 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 	msg.Authoritative = true
 	msg.Compress = true
 
-	msgSize, _ := handleEDNS(r, msg)
+	ctx, ok := handleEDNS(r, msg)
+	if !ok {
+		writeMsg(w, msg)
+		return
+	}
 
 	for _, question := range r.Question {
 		var rr []dns.RR
 		var err error
 
 		if question.Qclass != dns.ClassINET {
-			m := new(dns.Msg).SetRcode(r, dns.RcodeRefused)
-			writeMsg(w, m)
+			msg = newErr(r, msg, dns.RcodeRefused)
+			writeMsg(w, msg)
 			return
 		}
 
@@ -128,25 +131,15 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		msg.Answer = append(msg.Answer, rr...)
 	}
 
-	if msg.Len() > msgSize {
+	if msg.Len() > ctx.MaxSize {
 		logger.Warn().
 			Int("id", int(r.Id)).Str("addr", w.RemoteAddr().String()).
 			Msg("refused oversized response")
 
-		msg.SetRcode(r, dns.RcodeRefused)
+		msg = newErr(r, msg, dns.RcodeRefused)
 	}
 
 	writeMsg(w, msg)
-}
-
-func handleEDNS(r, msg *dns.Msg) (int, *dns.OPT) {
-	opt := r.IsEdns0()
-	if opt == nil {
-		return dns.MinMsgSize, nil
-	}
-
-	msg.SetEdns0(ednsSize, false)
-	return int(min(opt.UDPSize(), ednsSize)), opt
 }
 
 func getNS(question dns.Question, cfg *config.Config) ([]dns.RR, error) {
@@ -187,6 +180,13 @@ func newRR(s string) ([]dns.RR, error) {
 		return nil, err
 	}
 	return []dns.RR{rr}, nil
+}
+
+func newErr(req, msg *dns.Msg, rcode int) *dns.Msg {
+	resp := new(dns.Msg)
+	resp.SetRcode(req, rcode)
+	resp.Extra = append(resp.Extra, msg.IsEdns0())
+	return resp
 }
 
 func writeMsg(w dns.ResponseWriter, msg *dns.Msg) {
