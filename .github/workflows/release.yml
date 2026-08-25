@@ -48,6 +48,7 @@ jobs:
           for dir in bin/*/; do
             platform=$(basename "$dir")
             mv "$dir/dnf" "bin/dnf-$platform"
+            rm -rf $dir
           done
           cp dnfd.service bin/dnfd.service
           cp config.yml bin/config.yml
