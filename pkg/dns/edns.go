@@ -25,12 +25,13 @@ func handleEDNS(r, msg *dns.Msg) (*EDNS, bool) {
 	}
 
 	msg.SetEdns0(ednsSize, false)
+	msgOpt := msg.IsEdns0()
+
 	if opt.Version() != 0 {
-		*msg = *newErr(r, msg, dns.RcodeBadVers)
+		*msg = *newErr(r, msgOpt, dns.RcodeBadVers)
 		return nil, false
 	}
 
-	msgOpt := msg.IsEdns0()
 	clientSize := max(512, int(opt.UDPSize()))
 
 	ctx := &EDNS{
@@ -46,7 +47,7 @@ func handleEDNS(r, msg *dns.Msg) (*EDNS, bool) {
 		}
 
 		if !ok {
-			*msg = *newErr(r, msg, dns.RcodeFormatError)
+			*msg = *newErr(r, msgOpt, dns.RcodeFormatError)
 			return nil, false
 		}
 	}

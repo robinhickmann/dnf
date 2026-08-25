@@ -1,10 +1,8 @@
 package http
 
 import (
-	"crypto/tls"
 	"fmt"
 	stdlog "log"
-	"net"
 	"net/http"
 
 	"github.com/robinhickmann/dnf/pkg/config"
@@ -14,47 +12,31 @@ import (
 
 var logger zerolog.Logger
 
-// NewBind returns and binds all the net.Listener's for the dns binds.
-func NewBinds(cfg *config.Config) []net.Listener {
-	listeners := []net.Listener{}
-
-	for _, bind := range cfg.HTTP.Binds {
-		ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", bind, cfg.HTTP.Port))
-		if err != nil {
-			panic(err)
-		}
-		listeners = append(listeners, ln)
-	}
-
-	return listeners
-}
-
 // NewServer returns and starts a new http.Server with the provided config options.
-func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Config) []*http.Server {
+func NewServer(cfg *config.Config) []*http.Server {
 	logger = log.With().Str("server", "http").Logger()
 	http.HandleFunc("/", httpHandler)
 
 	srv := []*http.Server{}
 
-	for _, ln := range listeners {
+	for _, bind := range cfg.HTTP.Binds {
 		s := &http.Server{
-			Addr:         ln.Addr().String(),
+			Addr:         fmt.Sprintf("%s:%d", bind, cfg.HTTP.Port),
 			IdleTimeout:  cfg.HTTP.Timeout.Idle,
 			ReadTimeout:  cfg.HTTP.Timeout.Read,
 			WriteTimeout: cfg.HTTP.Timeout.Write,
 			ErrorLog:     stdlog.New(logger, "", 0),
-			TLSConfig:    tlsConfig,
 		}
 
 		go func() {
 			var err error
 
 			if cfg.HTTP.TLS.Enabled {
-				err = s.ServeTLS(ln, "", "")
+				err = s.ListenAndServeTLS(cfg.HTTP.TLS.CertFile, cfg.HTTP.TLS.KeyFile)
 			} else {
-				err = s.Serve(ln)
+				err = s.ListenAndServe()
 			}
-
+			
 			if err != nil && err != http.ErrServerClosed {
 				panic(err)
 			}
@@ -70,18 +52,6 @@ func NewServer(cfg *config.Config, listeners []net.Listener, tlsConfig *tls.Conf
 	}
 
 	return srv
-}
-
-// NewTLSConfig tries to load the key pair and returns a new tls.Config if successful.
-func NewTLSConfig(certFile, keyFile string) *tls.Config {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to load key pair")
-	}
-
-	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {

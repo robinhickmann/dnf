@@ -2,7 +2,6 @@ package dns
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
@@ -17,23 +16,8 @@ var (
 	logger zerolog.Logger
 )
 
-// NewBind returns and binds all the net.PacketConn's for the dns binds.
-func NewBinds(cfg *config.Config) []net.PacketConn {
-	pktConns := []net.PacketConn{}
-
-	for _, bind := range cfg.DNS.Binds {
-		pktConn, err := net.ListenPacket("udp", fmt.Sprintf("%s:%d", bind, cfg.DNS.Port))
-		if err != nil {
-			panic(err)
-		}
-		pktConns = append(pktConns, pktConn)
-	}
-
-	return pktConns
-}
-
 // NewServer returns and starts a new dns.Server with the provided config options.
-func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
+func NewServer(cfg *config.Config) []*dns.Server {
 	logger = log.With().Str("server", "dns").Logger()
 	srv := []*dns.Server{}
 
@@ -41,17 +25,16 @@ func NewServer(cfg *config.Config, pktConns []net.PacketConn) []*dns.Server {
 		dnsHandler(w, r, cfg)
 	})
 
-	for _, pktConn := range pktConns {
+	for _, bind := range cfg.DNS.Binds {
 		s := &dns.Server{
-			PacketConn:   pktConn,
-			Addr:         pktConn.LocalAddr().String(),
+			Addr:         fmt.Sprintf("%s:%d", bind, cfg.DNS.Port),
 			Net:          "udp",
 			ReadTimeout:  cfg.DNS.Timeout.Read,
 			WriteTimeout: cfg.DNS.Timeout.Write,
 		}
 
 		go func(s *dns.Server) {
-			err := s.ActivateAndServe()
+			err := s.ListenAndServe()
 			if err != nil {
 				panic(err)
 			}
@@ -81,7 +64,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 		var err error
 
 		if question.Qclass != dns.ClassINET {
-			msg = newErr(r, msg, dns.RcodeRefused)
+			msg = newErr(r, msg.IsEdns0(), dns.RcodeRefused)
 			writeMsg(w, msg)
 			return
 		}
@@ -136,7 +119,7 @@ func dnsHandler(w dns.ResponseWriter, r *dns.Msg, cfg *config.Config) {
 			Int("id", int(r.Id)).Str("addr", w.RemoteAddr().String()).
 			Msg("refused oversized response")
 
-		msg = newErr(r, msg, dns.RcodeRefused)
+		msg = newErr(r, msg.IsEdns0(), dns.RcodeRefused)
 	}
 
 	writeMsg(w, msg)
@@ -182,10 +165,12 @@ func newRR(s string) ([]dns.RR, error) {
 	return []dns.RR{rr}, nil
 }
 
-func newErr(req, msg *dns.Msg, rcode int) *dns.Msg {
+func newErr(req *dns.Msg, opt *dns.OPT, rcode int) *dns.Msg {
 	resp := new(dns.Msg)
 	resp.SetRcode(req, rcode)
-	resp.Extra = append(resp.Extra, msg.IsEdns0())
+	if opt != nil {
+		resp.Extra = append(resp.Extra, opt)
+	}
 	return resp
 }
 

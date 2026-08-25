@@ -14,6 +14,7 @@ BIN := bin/$(GOOS)-$(GOARCH)/dnf
 INSTALL_BIN := /usr/local/bin/dnfd
 INSTALL_SERVICE := /etc/systemd/system/dnfd.service
 INSTALL_DIR := /etc/dnfd
+INSTALL_USER := dnfd
 
 all: tls fmt lint build run
 
@@ -41,6 +42,8 @@ install: build
 	install -Dm644 dnfd.service $(INSTALL_SERVICE)
 	install -Dm644 config.yml $(INSTALL_DIR)/config.yml
 
+	useradd -r -M -s /sbin/nologin $(INSTALL_USER)
+
 	systemctl daemon-reload
 	systemctl enable --now dnfd
 
@@ -49,6 +52,7 @@ uninstall:
 	
 	systemctl disable --now dnfd
 	rm -rf $(INSTALL_BIN) $(INSTALL_SERVICE) $(INSTALL_DIR)
+	deluser $(INSTALL_USER)
 	systemctl daemon-reload
 
 reinstall: uninstall install
@@ -63,7 +67,7 @@ lint: ./bin/golangci-lint
 	./bin/golangci-lint run
 
 ./bin/golangci-lint:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.12.2
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.13.1
 
 tls: key.pem cert.pem
 

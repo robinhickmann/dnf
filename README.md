@@ -7,11 +7,11 @@ Well, that's the idea!
 ### Install
 
 ```
-curl -sSfL https://dnf.hickmann.dev/install.sh | sudo sh
+curl -sSfL https://dnf.hickmann.dev/install.sh | sh
 ```
 
 ### Uninstall
 
 ```
-curl -sSfL https://dnf.hickmann.dev/uninstall.sh | sudo sh
+curl -sSfL https://dnf.hickmann.dev/uninstall.sh | sh
 ```

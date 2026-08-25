@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.4"
+          go-version: 1.26.6
 
       - name: Build release binaries
         run: make release VERSION=${{ github.ref_name }}
@@ -55,12 +55,21 @@ jobs:
       - name: Generate Checksums
         run: |
           cd bin
-          sha256sum dnf-* > checksums.txt
+          sha256sum * > checksums.txt
+
+      - name: Generate Changelog
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "${CURRENT_TAG}^")
+
+          echo "## Changes" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          git log "${PREV_TAG}..${CURRENT_TAG}" --pretty=format:"- %s (%h)" >> CHANGELOG.md
 
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: CHANGELOG.md
           files: |
             bin/dnf-*
             bin/checksums.txt

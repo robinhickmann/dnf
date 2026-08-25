@@ -163,6 +163,10 @@ func (t *TLS) validate() error {
 }
 
 func (r *RateLimit) validate(srv string) error {
+	if err := require("rate_limit.conn_limit", r.ConnLimit); err != nil {
+		return fmt.Errorf("%s.%s", srv, err)
+	}
+
 	if err := require("rate_limit.rate", r.Rate); err != nil {
 		return fmt.Errorf("%s.%s", srv, err)
 	}
@@ -171,40 +175,16 @@ func (r *RateLimit) validate(srv string) error {
 		return fmt.Errorf("%s.%s", srv, err)
 	}
 
-	if srv == "dns" {
-		if err := r.ECS.validate(); err != nil {
-			return fmt.Errorf("%s.rate_limit.%s", srv, err)
-		}
-	}
-
-	if err := r.Block.validate(srv); err != nil {
+	if err := r.Block.validate(); err != nil {
 		return fmt.Errorf("%s.rate_limit.%s", srv, err)
 	}
 
 	return nil
 }
 
-func (e *ECS) validate() error {
-	if err := require("ecs.rate", e.Rate); err != nil {
-		return err
-	}
-
-	if err := require("ecs.burst", e.Burst); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (b *Block) validate(srv string) error {
+func (b *Block) validate() error {
 	if err := duration("block.duration", b.Duration); err != nil {
 		return err
-	}
-
-	if srv == "http" {
-		if err := require("block.max_connections", b.MaxConnections); err != nil {
-			return err
-		}
 	}
 
 	return nil

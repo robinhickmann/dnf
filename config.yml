@@ -14,19 +14,17 @@ dns:
       - ns2.example.com
   rate_limit:
     enabled: true
+    conn_limit: 5
     rate: 25
     burst: 50
-    ecs:
-      enabled: true
-      rate: 10
-      burst: 20
     block:
       enabled: true
+      log: true
       duration: 5m
   timeout:
     shutdown: 5s
-    read: 10s
-    write: 10s
+    read: 5s
+    write: 5s
 
 http:
   port: 8080
@@ -38,15 +36,16 @@ http:
     key_file: key.pem
   rate_limit:
     enabled: true
-    rate: 25
-    burst: 50
+    conn_limit: 10
+    rate: 10
+    burst: 20
     block:
       enabled: true
+      log: true
       duration: 5m
-      max_connections: 10
   timeout:
     shutdown: 5s
-    idle: 5s
+    idle: 1m
     read: 10s
     write: 10s
 

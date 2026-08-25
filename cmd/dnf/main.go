@@ -39,17 +39,8 @@ func main() {
 	}
 
 	setupLogger(&cfg.Log, flags.Debug)
-
-	pktConns := dns.NewBinds(cfg)
-	listeners := http.NewBinds(cfg)
-	tlsConfig := http.NewTLSConfig(cfg.HTTP.TLS.CertFile, cfg.HTTP.TLS.KeyFile)
-
-	if err := dropPrivileges(); err != nil {
-		log.Fatal().Err(err).Msg("failed to drop privileges")
-	}
-
-	dns := dns.NewServer(cfg, pktConns)
-	http := http.NewServer(cfg, listeners, tlsConfig)
+	dns := dns.NewServer(cfg)
+	http := http.NewServer(cfg)
 
 	<-ctx.Done()
 	stop()

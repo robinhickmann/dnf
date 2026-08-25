@@ -47,22 +47,16 @@ type TLS struct {
 
 type RateLimit struct {
 	Enabled bool  `yaml:"enabled"`
+	ConnLimit int `yaml:"conn_limit"`
 	Rate    int   `yaml:"rate"`
 	Burst   int   `yaml:"burst"`
-	ECS     ECS   `yaml:"ecs"`
 	Block   Block `yaml:"block"`
-}
-
-type ECS struct {
-	Enabled bool `yaml:"enabled"`
-	Rate    int  `yaml:"rate"`
-	Burst   int  `yaml:"burst"`
 }
 
 type Block struct {
 	Enabled        bool          `yaml:"enabled"`
+	Log            bool          `yaml:"log"`
 	Duration       time.Duration `yaml:"duration"`
-	MaxConnections int           `yaml:"max_connections"`
 }
 
 type Timeout struct {
@@ -133,22 +127,19 @@ func defaultConfig() *Config {
 			},
 			RateLimit: RateLimit{
 				Enabled: true,
+				ConnLimit: 5,
 				Rate:    25,
 				Burst:   50,
-				ECS: ECS{
-					Enabled: true,
-					Rate:    10,
-					Burst:   20,
-				},
 				Block: Block{
 					Enabled:  true,
+					Log:      true,
 					Duration: 5 * time.Minute,
 				},
 			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,
-				Read:     10 * time.Second,
-				Write:    10 * time.Second,
+				Read:     5 * time.Second,
+				Write:    5 * time.Second,
 			},
 		},
 		HTTP: HTTP{
@@ -161,17 +152,18 @@ func defaultConfig() *Config {
 			},
 			RateLimit: RateLimit{
 				Enabled: true,
-				Rate:    25,
-				Burst:   50,
+				ConnLimit: 10,
+				Rate:    10,
+				Burst:   20,
 				Block: Block{
 					Enabled:        true,
+					Log:            true,
 					Duration:       5 * time.Minute,
-					MaxConnections: 10,
 				},
 			},
 			Timeout: Timeout{
 				Shutdown: 5 * time.Second,
-				Idle:     5 * time.Second,
+				Idle:     60 * time.Second,
 				Read:     10 * time.Second,
 				Write:    10 * time.Second,
 			},
