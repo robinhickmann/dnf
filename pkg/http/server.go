@@ -36,7 +36,7 @@ func NewServer(cfg *config.Config) []*http.Server {
 			} else {
 				err = s.ListenAndServe()
 			}
-			
+
 			if err != nil && err != http.ErrServerClosed {
 				panic(err)
 			}

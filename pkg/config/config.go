@@ -46,17 +46,17 @@ type TLS struct {
 }
 
 type RateLimit struct {
-	Enabled bool  `yaml:"enabled"`
-	ConnLimit int `yaml:"conn_limit"`
-	Rate    int   `yaml:"rate"`
-	Burst   int   `yaml:"burst"`
-	Block   Block `yaml:"block"`
+	Enabled   bool  `yaml:"enabled"`
+	ConnLimit int   `yaml:"conn_limit"`
+	Rate      int   `yaml:"rate"`
+	Burst     int   `yaml:"burst"`
+	Block     Block `yaml:"block"`
 }
 
 type Block struct {
-	Enabled        bool          `yaml:"enabled"`
-	Log            bool          `yaml:"log"`
-	Duration       time.Duration `yaml:"duration"`
+	Enabled  bool          `yaml:"enabled"`
+	Log      bool          `yaml:"log"`
+	Duration time.Duration `yaml:"duration"`
 }
 
 type Timeout struct {
@@ -126,10 +126,10 @@ func defaultConfig() *Config {
 				},
 			},
 			RateLimit: RateLimit{
-				Enabled: true,
+				Enabled:   true,
 				ConnLimit: 5,
-				Rate:    25,
-				Burst:   50,
+				Rate:      25,
+				Burst:     50,
 				Block: Block{
 					Enabled:  true,
 					Log:      true,
@@ -151,14 +151,14 @@ func defaultConfig() *Config {
 				KeyFile:  "key.pem",
 			},
 			RateLimit: RateLimit{
-				Enabled: true,
+				Enabled:   true,
 				ConnLimit: 10,
-				Rate:    10,
-				Burst:   20,
+				Rate:      10,
+				Burst:     20,
 				Block: Block{
-					Enabled:        true,
-					Log:            true,
-					Duration:       5 * time.Minute,
+					Enabled:  true,
+					Log:      true,
+					Duration: 5 * time.Minute,
 				},
 			},
 			Timeout: Timeout{

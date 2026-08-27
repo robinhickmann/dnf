@@ -32,6 +32,11 @@ verify_arch() {
 
 ask() {
     question=$1
+
+    if [ "$YES" = "1" ]; then
+        return 0
+    fi
+
     while true; do
         printf "%s [y/N] " "$question"
         read -r answer < /dev/tty
