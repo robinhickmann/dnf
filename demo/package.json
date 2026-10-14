@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.2.2"
+    "vite": "^8.3.4"
   },
   "dependencies": {
     "flag-icons": "^7.5.0"
