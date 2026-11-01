@@ -67,7 +67,7 @@ lint: ./bin/golangci-lint
 	./bin/golangci-lint run
 
 ./bin/golangci-lint:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.13.1
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.15.0
 
 tls: key.pem cert.pem
 

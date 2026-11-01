@@ -1,6 +1,6 @@
 module github.com/robinhickmann/dnf
 
-go 1.26.6
+go 1.27.3
 
 require (
 	github.com/miekg/dns v1.1.73
